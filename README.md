@@ -1,4 +1,4 @@
-# [Linuxmuser]()
+# [Linuxmuser](https://www.linuxmuster.net/de/home/)
 
 ## LMv7 walkthrough
 
@@ -14,17 +14,17 @@ Das Script erhebt keinen Anspruch auf Vollständigkeit, der Entwickler auch
 nicht!
 
 Das Script erwartet ein Debian-basiertes Host-System (Debian, Ubuntu, Devuan
-(hierauf ist es entwickelt und getestet)).
+(hierauf ist es entwickelt und getestet), ...).
 
 Der Ablauf läd die VM-Abbilder herunter, dazu und zur Installation benötigt es
-erfahrungsgemäß ein rootfs von 30GB Größe.
+erfahrungsgemäß ein rootfs von ca 30GB Größe.
 
 Die Laufwerke der VMs werden in einem LVM abgelegt, hierfür ist genug Platz
-vorzusehen (aktuell werden ohne Änderung der voreingestellten Größen 135GB
+vorzusehen (aktuell werden ohne Änderung der voreingestellten Größen ca 135GB
 verwendet).
 
 Vor dem Starten des Scriptes ist es hilfreich, es zu lesen, es enthält keine
-esoterischen Shell-Konstruktionen und beisst nicht - oben lassen sich sogar ein
+esoterischen Shell-Konstruktionen und beißt nicht - oben lassen sich sogar ein
 paar Einstellungen machen!
 
 Das Script sollte im Wesentlichen als Dokumentation gesehen werden, was zu tun
