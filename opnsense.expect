@@ -1,0 +1,58 @@
+#!/usr/bin/expect -f
+spawn virsh console lmn7-opnsense
+stty echo
+set timeout -1
+sleep 1
+send "\r"
+while {1} {
+	expect {
+		"Enter an option: " {
+			break
+		}
+		"login: " {
+			send "root\r"
+		}
+		"Password:" {
+			sleep 1
+			send "Muster!\r"
+		}
+	}
+}
+send "1\r"
+expect -re "Do you want to configure VLANs now. .y/N.: "
+send "n\r"
+expect "Enter the WAN interface name or 'a' for auto-detection: "
+send "em1\r"
+expect "(or nothing if finished): "
+send "em0\r"
+expect "(or nothing if finished): "
+send "em2\r"
+expect "(or nothing if finished): "
+send "\r"
+expect -re "Do you want to proceed. .y/N.: "
+send "y\r"
+expect "Enter an option: "
+send "12\r"
+expect -re "Proceed with this action. ..*y/N.: "
+send "y\r"
+while {1} {
+	expect {
+		"Enter an option: " {
+			break
+		}
+		"login: " {
+			send "root\r"
+		}
+		"Password:" {
+			sleep 1
+			send "Muster!\r"
+		}
+	}
+}
+send "6\r"
+expect -re "The system will reboot. Do you want to proceed. .y/N.: "
+send "y\r"
+expect "login: "
+send "\035"
+close
+exit

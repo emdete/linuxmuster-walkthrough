@@ -1,0 +1,43 @@
+#!/usr/bin/expect -f
+spawn virsh console lmn7-server
+stty echo
+set timeout -1
+sleep 1
+send "\r"
+while {1} {
+	expect {
+		"login: " {
+			send "root\r"
+		}
+		"Passwort: " {
+			sleep 1
+			send "Muster!\r"
+		}
+		"root@server:~# " {
+			break
+		}
+	}
+}
+send "apt -y purge cloud-init unattended-upgrades\r"
+expect "root@server:~# "
+send "apt update\r"
+expect "root@server:~# "
+send "echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections\r"
+expect "root@server:~# "
+send "echo 'debconf debconf/priority select critical' | debconf-set-selections\r"
+expect "root@server:~# "
+send "echo 'grub-pc grub-pc/install_devices select /dev/vda' | debconf-set-selections\r"
+expect "root@server:~# "
+send "echo 'grub-pc grub-pc/install_devices_disks_changed select /dev/vda' | debconf-set-selections\r"
+expect "root@server:~# "
+send "apt -y dist-upgrade\r"
+expect "root@server:~# "
+send "linuxmuster-prepare --setup --force --profile=server --default --unattended --domain=lampe.lan\r"
+expect "root@server:~# "
+send "linuxmuster-setup --unattended --servername=server --domainname=lampe.lan --dhcprange=10.0.0.100\\ 10.0.0.200 --opsiip= --dockerip= --mailip= --adminpw=Muster! --smtprelay= --smtpuser= --smtppw= --schoolname=Hasenschule --location=Wald --country=de --state=NI\r"
+expect "root@server:~# "
+send "reboot\r"
+expect "login: "
+send "\035"
+close
+exit
