@@ -7,8 +7,8 @@
 # Vorraussetzung ist ein Debian-basiertes Host-System, auf dem dieses Script
 # gestartet wird. Das Script sollte, wenn es mehrfach gestartet wird immer im
 # selben Verzeichnis laufen, da es dann die Images nicht neu laed. Die Images
-# brauchen ca 9GB (ich lasse das Script auf einem minimalen Debian-System mit
-# 20GB fue das root-Verzeichnis laufen).
+# brauchen ca 9GB, das bionic Image 7.3GB (ich lasse das Script auf einem
+# minimalen Debian-System mit 30GB fuer das rootfs laufen).
 #
 # Das installierte System basiert auf libvirt und Freunde (qemu, virtinst,
 # kvm), dass in der Linuxmuster-Dokumentation "KVM" genannt wird.
@@ -48,12 +48,12 @@ if [ $(id -u) -ne 0 ] ; then
 fi
 ___comment_and_ask "Vorbereitung des Hosts, die Pakete '$HOSTPACKAGES' werden für die Virtualisierung installiert, LMv7 release $RELEASE wird auf $TARGET installiert."
 if [ ! -f .ssh/id_rsa.pub ] ; then
-	ssh-keygen
+	ssh-keygen -N '' -f ~/.ssh/id_rsa
 fi
 apt update
 #apt dist-upgrade -y
 apt install -y $HOSTPACKAGES
-if [ "$(pvdisplay | awk '/VG Name/{print $3}')" != "host-vg" ] ; then
+if [ "$(pvdisplay | awk '/VG Name/{print $3; exit 0}')" != "host-vg" ] ; then
 	pvcreate $TARGET
 	vgcreate host-vg $TARGET
 fi
@@ -111,10 +111,10 @@ else
 	echo "--- Netzwerkmanagment nicht unterstuetzt"
 	exit 3
 fi
-if [ $(virsh net-list | awk '$1 == "default"{print $2}') != "active" ] ; then
+if [ "$(virsh net-list | awk '$1 == "default"{print $2}')" != "active" ] ; then
 	virsh net-start default
 fi
-if [ $(virsh net-list | awk '$1 == "default"{print $2}') != "yes" ] ; then
+if [ "$(virsh net-list | awk '$1 == "default"{print $2}')" != "yes" ] ; then
 	virsh net-autostart default
 fi
 ___comment_and_ask "Loeschen alter Installationsreste (alle VMs, bekannte LVs)"
@@ -126,8 +126,8 @@ rm -vf /var/lib/libvirt/images/lmn7-*.raw
 lvremove --yes host-vg/opnsense || true
 lvremove --yes host-vg/serverroot || true
 lvremove --yes host-vg/serverdata || true
-ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.254"
-ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.1"
+ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.254" || true
+ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.1" || true
 # virt-convert enthält einen Bug und wird mit einem Fehler beendet. Der Bug ist "reportet", sollte er aber auftreten ist hier Abhilfe:
 # BUG in virt-convert: /usr/share/virt-manager/virtconv/formats.py:271 cmd = [executable, "convert", "-O", disk_format, absin, absout]
 # BUG in virt-convert: /usr/share/virt-manager/virtconv/ovf.py:228 disk.path = os.path.dirname(input_file) + '/' + path
