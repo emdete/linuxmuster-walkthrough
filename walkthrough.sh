@@ -316,6 +316,7 @@ if [ -f sophomorix-dump.tgz ] ; then
 	___comment_and_ask Migration
 	scp sophomorix-dump.tgz 10.0.0.1:
 	ssh 10.0.0.1 tar xvf sophomorix-dump.tgz
+	ssh 10.0.0.1 apt install -y sophomorix-vampire
 	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --analyze
 	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --create-class-script
 	ssh 10.0.0.1 /root/sophomorix-vampire/sophomorix-vampire-classes.sh
