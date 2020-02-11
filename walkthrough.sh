@@ -25,6 +25,16 @@ TARGET=/dev/sda2
 STEP=n
 # Das Netwerk des Hostsystems einrichten:
 HOSTNETWORK=n
+# LDAP Namen:
+LDAP_PLANET=earth
+LDAP_COUNTRY=de
+LDAP_STATE=NI
+LDAP_LOCATION=Wald
+LDAP_SCHOOLNAME=Hasenschule
+# Obige Einstellungen koennen in walkthrough.rc ueberschrieben werden:
+if [ -f walkthrough.rc ] ; then
+	. ./walkthrough.rc
+fi
 # Nun gehts los:
 export LANG=C
 unset VISUAL SELECTED_EDITOR EDITOR
@@ -131,10 +141,10 @@ ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.1" || true
 # virt-convert enthält einen Bug und wird mit einem Fehler beendet. Der Bug ist "reportet", sollte er aber auftreten ist hier Abhilfe:
 # BUG in virt-convert: /usr/share/virt-manager/virtconv/formats.py:271 cmd = [executable, "convert", "-O", disk_format, absin, absout]
 # BUG in virt-convert: /usr/share/virt-manager/virtconv/ovf.py:228 disk.path = os.path.dirname(input_file) + '/' + path
-# qemu-img greift auf einen anderen Pfad zu, der nicht exisitert. Es reicht, das erwartete Verzeichnis zu erzeugen:
-# BUG in qemu-img: mkdir /sys/fs/cgroup/unified/machine
 # https://www.redhat.com/archives/virt-tools-list/2019-June/msg00117.html
 # Fazit: TODO: Ersetzen durch virt-install
+# qemu-img greift auf einen anderen Pfad zu, der nicht exisitert. Es reicht, das erwartete Verzeichnis zu erzeugen:
+# BUG in qemu-img: mkdir /sys/fs/cgroup/unified/machine in /etc/rc.local
 ___comment_and_ask Erzeugen der Firewall Opnsense
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-opnsense-${RELEASE}.ova
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-opnsense-${RELEASE}.ova.sha
@@ -267,7 +277,7 @@ EDITOR=$TEMPSCRIPT virsh edit lmn7-server
 virsh autostart lmn7-server
 virsh start lmn7-server
 sleep 1
-./server.expect
+./server.expect $LDAP_PLANET $LDAP_COUNTRY $LDAP_STATE $LDAP_LOCATION $LDAP_SCHOOLNAME
 sshpass -p'Muster!' -v ssh-copy-id -o StrictHostKeyChecking=no 10.0.0.1
 ssh 10.0.0.1 "cat > ~/.vimrc" <<EOF
 set mouse=
@@ -301,6 +311,49 @@ ssh 10.0.0.1 "sed -i 's/HOSTNAME./HOSTNAME.DOMAIN/' /srv/linbo/linuxmuster-clien
 ssh 10.0.0.1 "sed -i 's/server./server.DOMAIN/' /srv/linbo/linuxmuster-client/bionic/common/etc/hosts"
 ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
 ssh 10.0.0.1 "linuxmuster-import-devices"
-# ??? ssh 10.0.0.1 "/usr/share/linuxmuster/examples/create-testusers.py"
+if [ -f sophomorix-dump.tgz ] ; then
+	___comment_and_ask Migration
+	scp sophomorix-dump.tgz 10.0.0.1:
+	ssh 10.0.0.1 tar xvf sophomorix-dump.tgz
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --analyze
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --create-class-script
+	ssh 10.0.0.1 /root/sophomorix-vampire/sophomorix-vampire-classes.sh
+	ssh 10.0.0.1 samba-tool domain passwordsettings set --complexity=off
+	ssh 10.0.0.1 samba-tool domain passwordsettings set --min-pwd-length=2
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --create-add-file
+	ssh 10.0.0.1 cp /root/sophomorix-vampire/sophomorix.add /var/lib/sophomorix/check-result/sophomorix.add
+	ssh 10.0.0.1 sophomorix-add -i
+	ssh 10.0.0.1 sophomorix-add
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --import-user-password-hashes
+	ssh 10.0.0.1 samba-tool domain passwordsettings set --complexity=default
+	ssh 10.0.0.1 samba-tool domain passwordsettings set --min-pwd-length=default
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --create-class-adminadd-script
+	ssh 10.0.0.1 /root/sophomorix-vampire/sophomorix-vampire-classes-adminadd.sh
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --create-project-script
+	ssh 10.0.0.1 /root/sophomorix-vampire/sophomorix-vampire-projects.sh
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --restore-config-files
+	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --restore-config-files
+	ssh 10.0.0.1 sed -i 's/ENCODING=auto/ENCODING=UTF-8/' /etc/linuxmuster/sophomorix/default-school/school.conf
+	ssh 10.0.0.1 sed -i 's/ENCODING_FORCE=no/ENCODING_FORCE=True/' /etc/linuxmuster/sophomorix/default-school/school.conf
+	ssh 10.0.0.1 sophomorix-check
+	ssh 10.0.0.1 sophomorix-add -i
+	ssh 10.0.0.1 sophomorix-update
+	ssh 10.0.0.1 sophomorix-kill
+	ssh 10.0.0.1 linuxmuster-import-devices
+	if [ -f /mnt/old ] ; then # TODO: data migration
+		rsync ... 10.0.0.1:/mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-student-homes --path-oldserver /mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-teacher-homes --path-oldserver /mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-class-shares --path-oldserver /mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-project-shares --path-oldserver /mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-linbo --path-oldserver /mnt
+	fi
+else
+	echo Für die Migration alter Daten auf der alten Installation folgende
+	echo Befehle abfeuern:
+	echo sophomorix-dump
+	echo tar cvzf sophomorix-dump.tgz sophomorix-dump
+	echo und das entstandene tar-Archiv auf den Server kopieren, wo dieses Script läuft
+fi
 ___comment_and_ask Installation beended.
 exit 0
