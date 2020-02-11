@@ -31,6 +31,7 @@ LDAP_COUNTRY=de
 LDAP_STATE=NI
 LDAP_LOCATION=Wald
 LDAP_SCHOOLNAME=Hasenschule
+LDAP_DOMAIN=lampe
 # Obige Einstellungen koennen in walkthrough.rc ueberschrieben werden:
 if [ -f walkthrough.rc ] ; then
 	. ./walkthrough.rc
@@ -277,7 +278,7 @@ EDITOR=$TEMPSCRIPT virsh edit lmn7-server
 virsh autostart lmn7-server
 virsh start lmn7-server
 sleep 1
-./server.expect $LDAP_PLANET $LDAP_COUNTRY $LDAP_STATE $LDAP_LOCATION $LDAP_SCHOOLNAME
+./server.expect "$LDAP_PLANET" "$LDAP_COUNTRY" "$LDAP_STATE" "$LDAP_LOCATION" "$LDAP_SCHOOLNAME" "$LDAP_DOMAIN"
 sshpass -p'Muster!' -v ssh-copy-id -o StrictHostKeyChecking=no 10.0.0.1
 ssh 10.0.0.1 "cat > ~/.vimrc" <<EOF
 set mouse=
