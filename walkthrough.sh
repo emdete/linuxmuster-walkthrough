@@ -344,11 +344,11 @@ if [ -f sophomorix-dump.tgz ] ; then
 	ssh 10.0.0.1 linuxmuster-import-devices
 	if [ -f /mnt/old ] ; then # TODO: data migration
 		rsync ... 10.0.0.1:/mnt
-		ssh 10.0.0.1 sophomorix-vampire --rsync-all-student-homes --path-oldserver /mnt
-		ssh 10.0.0.1 sophomorix-vampire --rsync-all-teacher-homes --path-oldserver /mnt
-		ssh 10.0.0.1 sophomorix-vampire --rsync-all-class-shares --path-oldserver /mnt
-		ssh 10.0.0.1 sophomorix-vampire --rsync-all-project-shares --path-oldserver /mnt
-		ssh 10.0.0.1 sophomorix-vampire --rsync-linbo --path-oldserver /mnt
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-student-homes --path-oldserver /mnt/home/students/
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-teacher-homes --path-oldserver /mnt/home/teachers/
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-class-shares --path-oldserver /mnt/home/share/classes/
+		ssh 10.0.0.1 sophomorix-vampire --rsync-all-project-shares --path-oldserver /mnt/home/share/projects/
+		ssh 10.0.0.1 sophomorix-vampire --rsync-linbo --path-oldserver /mnt/var/linbo/
 	fi
 else
 	echo Für die Migration alter Daten auf der alten Installation folgende
