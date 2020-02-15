@@ -32,6 +32,7 @@ LDAP_STATE=NI
 LDAP_LOCATION=Wald
 LDAP_SCHOOLNAME=Hasenschule
 LDAP_DOMAIN=lampe
+DEVICE_MAC=00:00:00:00:00:00
 # Obige Einstellungen koennen in walkthrough.rc ueberschrieben werden:
 if [ -f walkthrough.rc ] ; then
 	. ./walkthrough.rc
@@ -117,7 +118,25 @@ EOF
 	/etc/init.d/networking start
 elif [ -d /etc/netplan ] ; then
 	echo "TODO hier netplan.io support hinzufuegen"
-	exit 3
+	cat > /etc/netplan/01-netcfg.yaml <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s8:
+      dhcp4: no
+    enp0s17:
+      dhcp4: no
+  bridges:
+    br-red:
+      interfaces: [enp0s17]
+      dhcp4: no
+      addresses: [ ]
+    br-server:
+      interfaces: [enp0s8]
+      addresses: [ ]
+EOF
+	netplan apply
 else
 	echo "--- Netzwerkmanagment nicht unterstuetzt"
 	exit 3
@@ -305,7 +324,8 @@ if [ -f lmn-bionic-1119.zip ] ; then
 else
 	ssh 10.0.0.1 linuxmuster-client download -c bionic
 fi
-ssh 10.0.0.1 "echo 'binaerwerkstatt;nb001;bionic;b8:ca:3a:be:c2:89;10.0.0.100;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
+# Beispielrechner eintragen mit IP .99 (ausserhalb der dynamischen Range .100-200)
+ssh 10.0.0.1 "echo 'binaerwerkstatt;nb001;bionic;$DEVICE_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 ssh 10.0.0.1 "sed -i 's/Server *=.*/Server = 10.0.0.1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "sed -i 's/HOSTNAME./HOSTNAME.DOMAIN/' /srv/linbo/linuxmuster-client/bionic/common/etc/hosts"
@@ -342,8 +362,8 @@ if [ -f sophomorix-dump.tgz ] ; then
 	ssh 10.0.0.1 sophomorix-update
 	ssh 10.0.0.1 sophomorix-kill
 	ssh 10.0.0.1 linuxmuster-import-devices
-	if [ -f /mnt/old ] ; then # TODO: data migration
-		rsync ... 10.0.0.1:/mnt
+	if [ -d /mnt/home ] ; then
+		rsync --archive --verbose 10.16.1.1:/home 10.0.0.1:/mnt # TODO: data migration
 		ssh 10.0.0.1 sophomorix-vampire --rsync-all-student-homes --path-oldserver /mnt/home/students/
 		ssh 10.0.0.1 sophomorix-vampire --rsync-all-teacher-homes --path-oldserver /mnt/home/teachers/
 		ssh 10.0.0.1 sophomorix-vampire --rsync-all-class-shares --path-oldserver /mnt/home/share/classes/
