@@ -24,7 +24,11 @@ TARGET=/dev/sda2
 # Jeden Schritt, den das Script tut per <Enter> bestätigen lassen:
 STEP=n
 # Das Netwerk des Hostsystems einrichten:
-HOSTNETWORK=n
+HOST_NETWORK=n
+HOST_LINK_RED=eth0
+HOST_LINK_SERVER=eth1
+HOST_LINK_DMZ=eth2
+#ip -br link | awk '$3 ~ /[:0-9a-f]+/ && $1 != "lo" {print $1, $3}'
 # LDAP Namen:
 LDAP_PLANET=earth
 LDAP_COUNTRY=de
@@ -32,7 +36,7 @@ LDAP_STATE=NI
 LDAP_LOCATION=Wald
 LDAP_SCHOOLNAME=Hasenschule
 LDAP_DOMAIN=lampe
-DEVICE_MAC=00:00:00:00:00:00
+CLIENT_MAC=00:00:00:00:00:00
 # Obige Einstellungen koennen in walkthrough.rc ueberschrieben werden:
 if [ -f walkthrough.rc ] ; then
 	. ./walkthrough.rc
@@ -69,7 +73,7 @@ if [ "$(pvdisplay | awk '/VG Name/{print $3; exit 0}')" != "host-vg" ] ; then
 	pvcreate $TARGET
 	vgcreate host-vg $TARGET
 fi
-if [ "$HOSTNETWORK" == "n" ] ; then
+if [ "$HOST_NETWORK" == "n" ] ; then
 	echo "--- Keine Netzwerkkonfiguration"
 	# Haben wir Internet & die 3 nötigen Bridges?
 	ping -c 1 linuxmuster.net
@@ -81,12 +85,15 @@ elif [ -x /sbin/ifquery ] ; then
 	if ! grep -q source /etc/network/interfaces ; then
 		echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
 	fi
-	cat > /etc/network/interfaces.d/eth0 <<EOF
-iface eth0 inet manual
+	cat > /etc/network/interfaces.d/$HOST_LINK_RED <<EOF
+iface $HOST_LINK_RED inet manual
 EOF
-	cat > /etc/network/interfaces.d/eth1 <<EOF
-iface eth1 inet manual
-	# pre-up ip link add eth1 type dummy
+	cat > /etc/network/interfaces.d/$HOST_LINK_SERVER <<EOF
+iface $HOST_LINK_SERVER inet manual
+EOF
+	cat > /etc/network/interfaces.d/$HOST_LINK_DMZ <<EOF
+iface $HOST_LINK_DMZ inet manual
+	pre-up ip link add $HOST_LINK_DMZ type dummy
 EOF
 	cat > /etc/network/interfaces.d/br-dmz <<EOF
 iface br-dmz inet manual
@@ -97,20 +104,21 @@ EOF
 iface br-red inet dhcp
 	# bridges brauchen einige sekunden, bis sie funktionieren, bis da hin gehen
 	# dhcp-requests ins nirvana - noch habe ich keine lösung für das problem.
-	bridge_ports eth0
+	bridge_ports $HOST_LINK_RED
 	bridge_stp no
 EOF
 	cat > /etc/network/interfaces.d/br-server <<EOF
 iface br-server inet static
 	address 10.0.0.2
 	netmask 24
-	bridge_ports eth1
+	bridge_ports $HOST_LINK_SERVER
 	bridge_stp no
 EOF
 	# ifupdown kennt keine Abhängigkeiten, wir müssen die Reihenfolge manuell festlegen:
 	cat > /etc/network/interfaces.d/iforder <<EOF
-auto eth0
-auto eth1
+auto $HOST_LINK_RED
+auto $HOST_LINK_SERVER
+auto $HOST_LINK_DMZ
 auto br-server
 auto br-red
 auto br-dmz
@@ -123,17 +131,24 @@ network:
   version: 2
   renderer: networkd
   ethernets:
-    enp0s8:
+    $HOST_LINK_SERVER:
       dhcp4: no
-    enp0s17:
+    $HOST_LINK_RED:
+      dhcp4: no
+    $HOST_LINK_DMZ:
       dhcp4: no
   bridges:
     br-red:
-      interfaces: [enp0s17]
-      dhcp4: no
+      interfaces: [$HOST_LINK_RED]
+      dhcp4: yes
       addresses: [ ]
     br-server:
-      interfaces: [enp0s8]
+      interfaces: [$HOST_LINK_SERVER]
+      dhcp4: no
+      addresses: [ ]
+    br-dmz:
+      interfaces: [$HOST_LINK_DMZ]
+      dhcp4: no
       addresses: [ ]
 EOF
 	netplan apply
@@ -325,7 +340,7 @@ else
 	ssh 10.0.0.1 linuxmuster-client download -c bionic
 fi
 # Beispielrechner eintragen mit IP .99 (ausserhalb der dynamischen Range .100-200)
-ssh 10.0.0.1 "echo 'binaerwerkstatt;nb001;bionic;$DEVICE_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
+ssh 10.0.0.1 "echo 'binaerwerkstatt;nb001;bionic;$CLIENT_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 ssh 10.0.0.1 "sed -i 's/Server *=.*/Server = 10.0.0.1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "sed -i 's/HOSTNAME./HOSTNAME.DOMAIN/' /srv/linbo/linuxmuster-client/bionic/common/etc/hosts"
