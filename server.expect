@@ -32,6 +32,8 @@ send "echo 'grub-pc grub-pc/install_devices_disks_changed select /dev/vda' | deb
 expect "root@server:~# "
 send "apt -y dist-upgrade\r"
 expect "root@server:~# "
+send "apt autoremove -y --purge\r"
+expect "root@server:~# "
 send "linuxmuster-prepare --setup --force --profile=server --default --unattended --domain=[lindex $argv 5].lan\r"
 expect "root@server:~# "
 send "linuxmuster-setup --unattended --servername=server --domainname=[lindex $argv 5].lan --dhcprange=10.0.0.100\\ 10.0.0.200 --opsiip= --dockerip= --mailip= --adminpw=Muster! --smtprelay= --smtpuser= --smtppw= --schoolname=[lindex $argv 4] --location=[lindex $argv 3] --state=[lindex $argv 2] --country=[lindex $argv 1]\r"

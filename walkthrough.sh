@@ -17,6 +17,14 @@
 # auf Systemen laufen, die bereits irgendwelche relevanten Daten, Konfigurationen
 # oder VMs enthalten.
 #
+# Das Script installiert ein Image für die Clients. Wenn auf dem Host eine
+# Datei lmn-bionic-1119.zip gefunden wird, wird diese auf den LM-Server kopiert
+# und installiert. Andernfalls installiert das Script per Befehl
+# `linuxmuster-client download -c bionic` auf dem Server das Image direkt (was
+# zur Zeit noch nicht funktioniert). Desweiteren importiert das Script ein dump
+# aus einer alten Installation, wenn eine Datei "sophomorix-dump.tgz" vorhanden
+# ist.
+#
 # Die Version, die von LM heruntergeladen wird:
 RELEASE=20190724
 # Das Ziel der Installation, in dieser Partition werden die LVs erzeugt:
@@ -123,9 +131,11 @@ auto br-server
 auto br-red
 auto br-dmz
 EOF
-	/etc/init.d/networking start
+	/etc/init.d/networking restart
+	echo -n "Waiting bridges to come up ..."
+	sleep 32
+	echo
 elif [ -d /etc/netplan ] ; then
-	echo "TODO hier netplan.io support hinzufuegen"
 	cat > /etc/netplan/01-netcfg.yaml <<EOF
 network:
   version: 2
@@ -346,6 +356,7 @@ ssh 10.0.0.1 "sed -i 's/Server *=.*/Server = 10.0.0.1/' /srv/linbo/start.conf.bi
 ssh 10.0.0.1 "sed -i 's/HOSTNAME./HOSTNAME.DOMAIN/' /srv/linbo/linuxmuster-client/bionic/common/etc/hosts"
 ssh 10.0.0.1 "sed -i 's/server./server.DOMAIN/' /srv/linbo/linuxmuster-client/bionic/common/etc/hosts"
 ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
+ssh 10.0.0.1 "sed -i 's/^KernelOptions *=.*/KernelOptions = dhcpretry=9 quiet splash modprobe.blacklist=radeon nomodeset i915.alpha_support=1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 if [ -f sophomorix-dump.tgz ] ; then
 	___comment_and_ask Migration
