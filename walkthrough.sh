@@ -345,7 +345,7 @@ if [ -f lmn-bionic-$CLOOP_VERSION.zip ] ; then
 	ssh 10.0.0.1 "rm -vf lmn-bionic-$CLOOP_VERSION/*.macct"
 	ssh 10.0.0.1 "mv -v lmn-bionic-$CLOOP_VERSION/lmn-bionic.cloop* /srv/linbo/."
 	ssh 10.0.0.1 "mv -v lmn-bionic-$CLOOP_VERSION/linuxmuster-client /srv/linbo/."
-	ssh 10.0.0.1 "mv -v lmn-bionic-$CLOOP_VERSION/start.conf.bionic-lmg /srv/linbo/start.conf.bionic"
+	ssh 10.0.0.1 "mv -v lmn-bionic-$CLOOP_VERSION/start.conf.bionic /srv/linbo/."
 	ssh 10.0.0.1 "chmod 0644 /srv/linbo/lmn-bionic.cloop*"
 else
 	echo Das Image fehlt, es kann hier heruntergeladen werden:
@@ -354,7 +354,7 @@ else
 	ssh 10.0.0.1 linuxmuster-client download -c bionic
 fi
 # Beispielrechner eintragen mit IP .99 (ausserhalb der dynamischen Range .100-200)
-ssh 10.0.0.1 "echo 'binaerwerkstatt;nb001;bionic;$CLIENT_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
+ssh 10.0.0.1 "echo 'binaerwerkstatt;binaerwerkstatt-nb01;bionic;$CLIENT_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 ssh 10.0.0.1 "sed -i 's/Server *=.*/Server = 10.0.0.1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/hosts" << EOF
@@ -413,4 +413,11 @@ else
 fi
 ___comment_and_ask Installation beended.
 # see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
+cat <<EOF
+Folgende Schritte sind noch nötig:
+
+Booten des Clients, Installieren (roter Knopf), Einloggen per
+linuxadmin/Muster!, sudo su -, linuxmuster-client-adsso-setup, reboot, image,
+reboot, sync (gelber Knopf).
+EOF
 exit 0
