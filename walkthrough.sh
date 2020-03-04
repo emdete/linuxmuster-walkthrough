@@ -368,14 +368,13 @@ ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/author
 ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/authorized_keys
 ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/id_rsa.pub
 ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
-ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/profile.d/linuxmuster-proxy.sh" <<EOF
 export no_proxy=127.0.0.0/8,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,localhost,.local,.$LDAP_DOMAIN.lan
 export http_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 export ftp_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 export https_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 EOF
-# /var/lib/samba/sysvol/fsmw.lan/tls/cacert.pem
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
 AcceptEnv LANG LC_*
 ChallengeResponseAuthentication no
 PermitRootLogin yes
@@ -384,6 +383,11 @@ PermitTunnel no
 PrintMotd no
 UsePAM yes
 X11Forwarding no
+EOF
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/systemd/timesyncd.conf" <<EOF
+[Time]
+NTP=10.0.0.254
+
 EOF
 if [ -f lmn-bionic.cloop.postsync ] ; then
 	scp lmn-bionic.cloop.postsync 10.0.0.1:/srv/linbo/
