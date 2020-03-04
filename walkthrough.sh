@@ -363,6 +363,21 @@ ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/hosts" << EO
 #HOSTIP #HOSTNAME.$LDAP_DOMAIN.lan #HOSTNAME.local #HOSTNAME
 #SERVERIP server.$LDAP_DOMAIN.lan server server.local server.local
 EOF
+ssh 10.0.0.1 "echo > /srv/linbo/linuxmuster-client/bionic/common/etc/cron.d/linuxmuster-client"
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys < .ssh/id_rsa.pub"
+ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/authorized_keys
+ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/id_rsa.pub
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
+AcceptEnv LANG LC_*
+ChallengeResponseAuthentication no
+PermitRootLogin yes
+PasswordAuthentication yes
+PermitTunnel no
+PrintMotd no
+UsePAM yes
+X11Forwarding no
+EOF
 if [ -f lmn-bionic.cloop.postsync ] ; then
 	scp lmn-bionic.cloop.postsync 10.0.0.1:/srv/linbo/
 fi
@@ -412,24 +427,28 @@ else
 	echo Befehle abfeuern:
 	echo sophomorix-dump
 	echo tar cvzf sophomorix-dump.tgz sophomorix-dump
-	echo und das entstandene tar-Archiv auf den Server kopieren, wo dieses Script läuft
+	echo und das entstandene tgz-Archiv auf den Server kopieren, wo dieses Script läuft
 fi
-___comment_and_ask Installation beended.
-# see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
 N=n
 while [ "$N" = 'n' ] ; do
 	echo -n "Client einschalten und über das Netz booten lassen. Erscheint LINBO? (Y/n) "
 	read N
 done
 for N in partition format label initcache:rsync sync:1 start:1 ; do
+	echo "--- $N"
 	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
 done
-# TODO: 2x password eingeben, root account auf client aktivieren :/
-ssh 10.0.0.1 "ssh-copy-id 10.0.0.99"
+N=n
+while [ "$N" = 'n' ] ; do
+	echo -n "Client booted, erscheint der Login-Screen? (Y/n) "
+	read N
+done
+# see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
+# TODO: password eingeben:
 ssh 10.0.0.1 "ssh 10.0.0.99 linuxmuster-client-adsso-setup"
 ssh 10.0.0.1 "ssh 10.0.0.99 reboot"
-for N in create_cloop create_rsync upload_cloop upload_rsync ; do
+for N in create_cloop create_rsync upload_cloop upload_rsync sync:1 ; do
 	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N:1"
 done
-# TODO: Auf dem Client: ssh auth, sshd config, console login,
+___comment_and_ask Installation beended.
 exit 0
