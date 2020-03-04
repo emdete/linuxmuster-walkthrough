@@ -354,7 +354,7 @@ else
 	ssh 10.0.0.1 linuxmuster-client download -c bionic
 fi
 # Beispielrechner eintragen mit IP .99 (ausserhalb der dynamischen Range .100-200)
-ssh 10.0.0.1 "echo 'binaerwerkstatt;binaerwerkstatt-nb01;bionic;$CLIENT_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
+ssh 10.0.0.1 "echo 'binaerwerkstatt;bw-nb01;bionic;$CLIENT_MAC;10.0.0.99;;;;classroom-studentcomputer;;1;;;;;' >> /etc/linuxmuster/sophomorix/default-school/devices.csv"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 ssh 10.0.0.1 "sed -i 's/Server *=.*/Server = 10.0.0.1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/hosts" << EOF
@@ -363,6 +363,9 @@ ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/hosts" << EO
 #HOSTIP #HOSTNAME.$LDAP_DOMAIN.lan #HOSTNAME.local #HOSTNAME
 #SERVERIP server.$LDAP_DOMAIN.lan server server.local server.local
 EOF
+if [ -f lmn-bionic.cloop.postsync ] ; then
+	scp lmn-bionic.cloop.postsync 10.0.0.1:/srv/linbo/
+fi
 ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
 ssh 10.0.0.1 "sed -i 's/^KernelOptions *=.*/KernelOptions = dhcpretry=9 quiet splash modprobe.blacklist=radeon nomodeset i915.alpha_support=1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "linuxmuster-import-devices"
@@ -413,11 +416,20 @@ else
 fi
 ___comment_and_ask Installation beended.
 # see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
-cat <<EOF
-Folgende Schritte sind noch nötig:
-
-Booten des Clients, Installieren (roter Knopf), Einloggen per
-linuxadmin/Muster!, sudo su -, linuxmuster-client-adsso-setup, reboot, image,
-reboot, sync (gelber Knopf).
-EOF
+N=n
+while [ "$N" = 'n' ] ; do
+	echo -n "Client einschalten und über das Netz booten lassen. Erscheint LINBO? "
+	read N
+done
+for N in partition format label initcache:rsync sync:1 start:1 ; do
+	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
+done
+# TODO: 2x password eingeben, root account auf client aktivieren :/
+ssh 10.0.0.1 "ssh-copy-id 10.0.0.99"
+ssh 10.0.0.1 "ssh 10.0.0.99 linuxmuster-client-adsso-setup"
+ssh 10.0.0.1 "ssh 10.0.0.99 reboot"
+for N in create_cloop create_rsync upload_cloop upload_rsync ; do
+	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N:1"
+done
+echo TODO: Auf dem Client: ssh auth, sshd config, console login,
 exit 0
