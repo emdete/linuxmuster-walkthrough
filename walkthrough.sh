@@ -418,7 +418,7 @@ ___comment_and_ask Installation beended.
 # see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
 N=n
 while [ "$N" = 'n' ] ; do
-	echo -n "Client einschalten und über das Netz booten lassen. Erscheint LINBO? "
+	echo -n "Client einschalten und über das Netz booten lassen. Erscheint LINBO? (Y/n) "
 	read N
 done
 for N in partition format label initcache:rsync sync:1 start:1 ; do
@@ -431,5 +431,5 @@ ssh 10.0.0.1 "ssh 10.0.0.99 reboot"
 for N in create_cloop create_rsync upload_cloop upload_rsync ; do
 	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N:1"
 done
-echo TODO: Auf dem Client: ssh auth, sshd config, console login,
+# TODO: Auf dem Client: ssh auth, sshd config, console login,
 exit 0
