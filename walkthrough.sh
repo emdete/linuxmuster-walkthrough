@@ -369,6 +369,13 @@ ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/autho
 ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/id_rsa.pub
 ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/profile.d/linuxmuster-proxy.sh" <<EOF
+export no_proxy=127.0.0.0/8,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,localhost,.local,.$LDAP_DOMAIN.lan
+export http_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
+export ftp_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
+export https_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
+EOF
+# /var/lib/samba/sysvol/fsmw.lan/tls/cacert.pem
 AcceptEnv LANG LC_*
 ChallengeResponseAuthentication no
 PermitRootLogin yes
@@ -380,6 +387,7 @@ X11Forwarding no
 EOF
 if [ -f lmn-bionic.cloop.postsync ] ; then
 	scp lmn-bionic.cloop.postsync 10.0.0.1:/srv/linbo/
+	ssh 10.0.0.1 chmod +x /srv/linbo/lmn-bionic.cloop.postsync
 fi
 ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
 ssh 10.0.0.1 "sed -i 's/^KernelOptions *=.*/KernelOptions = dhcpretry=9 quiet splash modprobe.blacklist=radeon nomodeset i915.alpha_support=1/' /srv/linbo/start.conf.bionic"
@@ -445,6 +453,8 @@ while [ "$N" = 'n' ] ; do
 done
 # see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
 # TODO: password eingeben:
+# mkdir -p /var/lib/samba/sysvol/fsmw.lan/tls/; cp /var/lib/samba/private/tls/lmn.lan.pem /var/lib/samba/sysvol/fsmw.lan/tls/cacert.pem
+ssh 10.0.0.1 "ssh 10.0.0.99 rm /etc/krb5.keytab"
 ssh 10.0.0.1 "ssh 10.0.0.99 linuxmuster-client-adsso-setup"
 ssh 10.0.0.1 "ssh 10.0.0.99 reboot"
 for N in create_cloop create_rsync upload_cloop upload_rsync sync:1 ; do

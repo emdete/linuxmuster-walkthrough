@@ -2,12 +2,12 @@
 log() {
 	echo "`date` postsync $*"
 }
-log "bionic-linuxmuster postsync begin"
+log "bionic-linuxmuster postsync begin ---"
 TARGET=/mnt
 log "TARGET=$TARGET"
-HOSTIP=$(ip -br a|awk '/^e/{print $3}'|sed 's-/.*--')
+HOSTIP=$(/sbin/ip a|awk '/eth0/{on=1}/inet/{if(on){print $2}}'|sed 's-/.*--')
 log "HOSTIP=$HOSTIP"
-SERVERIP="$(ip -br r|awk '/^default/{print $3}')"
+SERVERIP=$(awk '/nameserver/{print $2}' < /etc/resolv.conf)
 log "SERVERIP=$SERVERIP"
 STARTCONF=/cache/start.conf
 log "STARTCONF=$STARTCONF"
@@ -53,6 +53,6 @@ sed -i "s/#SERVERIP/$SERVERIP/g" $TARGET/etc/cups/client.conf
 chmod 440 $TARGET/etc/sudoers.d/linuxmuster-client-veracrypt
 chown -R 1000:1000 $TARGET/home/linuxadmin
 chown -R 1001:1001 $TARGET/home/linuxuser
-passwd -u root
-usermod --password '$6$F2QIligd$czqY.lq0uPrGPMjwkXvn7nZyzBBBIueifWEyT64/bw3pwCg2PR0AzfCXPNehNIEeY1e9b3p4ULyEAoznMhE92.' root
+chroot $TARGET passwd -u root
+chroot $TARGET usermod --password '$6$F2QIligd$czqY.lq0uPrGPMjwkXvn7nZyzBBBIueifWEyT64/bw3pwCg2PR0AzfCXPNehNIEeY1e9b3p4ULyEAoznMhE92.' root
 log "bionic-linuxmuster postsync end"
