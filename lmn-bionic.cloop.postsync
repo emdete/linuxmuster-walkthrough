@@ -7,43 +7,42 @@ TARGET=/mnt
 SERVERIP="$(grep ^linbo_server /tmp/dhcp.log | tail -1 | awk -F\' '{ print $2 }')"
 log "SERVERIP=$SERVERIP"
 STARTCONF=/cache/start.conf
-log "STARTCONF=$STARTCONF" 
+log "STARTCONF=$STARTCONF"
 RAUM=$(echo ${HOSTNAME} | cut -d"-" -f1)
 if [ -z "${RAUM}" ]; then
-    RAUM="unknown"
+	RAUM="unknown"
 fi
-log "RAUM=$RAUM" 
-PATCHCACHE=/linuxmuster-client/serverpatches
+log "RAUM=$RAUM"
+PATCHCACHE=linuxmuster-client/serverpatches
 log "PATCHCACHE=$PATCHCACHE"
 PATCHCLASS="bionic"
-log "PATCHCLASS=$PATCHCLASS" 
+log "PATCHCLASS=$PATCHCLASS"
 mkdir -p /cache/${PATCHCACHE}
-rsync --progress --delete -r "${SERVERIP}::linbo/linuxmuster-client/${PATCHCLASS}" "/cache/${PATCHCACHE}"
+rsync --verbose --delete --recursive "${SERVERIP}::linbo/linuxmuster-client/${PATCHCLASS}" "/cache/${PATCHCACHE}"
 if [ -d /cache/${PATCHCACHE}/${PATCHCLASS}/common ]; then
-    cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/common/* $TARGET/
+	cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/common/* $TARGET/
 fi
 if [ -d /cache/${PATCHCACHE}/${PATCHCLASS}/${RAUM} ]; then
-    cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/${RAUM}/* $TARGET/
+	cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/${RAUM}/* $TARGET/
 fi
 if [ -d /cache/${PATCHCACHE}/${PATCHCLASS}/${HOSTNAME} ]; then
-    cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/${HOSTNAME}/* $TARGET/
+	cp -ar /cache/${PATCHCACHE}/${PATCHCLASS}/${HOSTNAME}/* $TARGET/
 fi
 #MiniSK-Starter von den meisten Rechnern löschen
-#    case $HOSTNAME in
-#        admin|rm-le|infgr-le|infkl-le|rlz-01|rlz-02|rlz-03|rlz-04|rlz2-01|rlz2-02|rlz2-03|bk-vor|pcek-vor1|pcek-vor2|ph-vor|spra-01|bio-vor|pcek-le|ges-le) echo "mini_sk placed";;
-#	*)  rm $TARGET/usr/share/applications/mini_sk.desktop
-
-#    esac
+#	case $HOSTNAME in
+#		admin) log "mini_sk placed";;
+#		*) rm $TARGET/usr/share/applications/mini_sk.desktop ;;
+#	esac
 [ -f $TARGET/etc/cups/printers.conf ] && chmod 600 $TARGET/etc/cups/printers.conf
 chmod 700 $TARGET/root/.ssh/
 chmod 600 $TARGET/root/.ssh/authorized_keys
 sed -i "s/#HOSTIP/$HOSTIP/" $TARGET/etc/hosts
 sed -i "s/#HOSTNAME/$HOSTNAME/g" $TARGET/etc/hosts
 sed -i "s/#SERVERIP/$SERVERIP/" $TARGET/etc/hosts
-ROOT=$(sed ':a;N;$!ba;s/\n/;UMBRUCH;/g' $STARTCONF | sed 's/ //g'|sed 's/\[Partition\]/\n/g' | grep -i 'fstype=ext4' | sed 's/;UMBRUCH;/\n/g' | grep -i 'dev=/' | cut -d'=' -f2 | head -c20 | cut -d"#" -f1)
+ROOT=$(awk '$1=="Dev"{dev=$3}$1=="Label" && $3=="ubuntu"{print dev}' < $STARTCONF)
 log "ROOT=$ROOT"
 sed -i "s#\#dummyroot#$ROOT#g" $TARGET/etc/fstab
-SWAP=$(sed ':a;N;$!ba;s/\n/;UMBRUCH;/g' $STARTCONF | sed 's/ //g'|sed 's/\[Partition\]/\n/g' | grep -i 'fstype=swap' | sed 's/;UMBRUCH;/\n/g' | grep -i 'dev=/' | cut -d'=' -f2 | head -c20 | cut -d"#" -f1)
+SWAP=$(awk '$1=="Dev"{dev=$3}$1=="Label" && $3=="swap"{print dev}' < $STARTCONF)
 log "SWAP=$SWAP"
 sed -i "s#\#dummyswap#$SWAP#g" $TARGET/etc/fstab
 sed -i "s/#SERVERIP/$SERVERIP/g" $TARGET/etc/cups/client.conf
@@ -60,6 +59,7 @@ PrintMotd no
 UsePAM yes
 X11Forwarding no
 EOF
+passwd -u root
 cat >> $TARGET/root/.ssh/authorized_keys <<EOF
 sh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCqxqZYIbCMZp2KP5NgLSRF2VCEE2Zmn+E7cDGRmjJYIOSGFx4Um2haeraZIYVXz3Zms8aEkhq7qoEXkXst/XFBKlzkiucmFd72ZxdXrjDccSzNyzMKgyNxWaLwQp0DfxbqipVtd29XoXwcOdiEEs2UJoTWoJsKQRxd6K8mewk4+GPGp+lRkCmTnwgeb5+fn32gAWV9m592XqJQzeUsjS9VZpOtIhf/xPo2f7hTHvH1dZ7HP3bdz/TmY+yLizyFDKsF0KvMlg9O8+lOgOXZMs4jcRVhnFzedVs05PGMNtdWUfl56Js2XmmpnUwr3y06aIuTwUhtCsk5IOFeMUuwzeOYf5LN/MqPdFRxGbxTWx1EF22JXY2XeRWPeZe25q3CttFGB7OV0j2L4ca79WIakCUhLSFnSx3pXZHZjzG/qfF8XR2WvJqdzcYb1Fbsgsj/dAwXUREPm0E5diTJ50GRkdUoxMQ038WAe6+V1JMO5vyRbBt8xONzZQh1INJhvgBcZ2i6U7mMPPXh/nh8/luUseeItFCv+WpCeYGzSwlp2bHZ27Yl7An0xqtVoARmB79iIP/ijW/H1zTsXKNhtbAG3b+LZj6GH+Tf7LtU8nUV8/qLcrx8rPx+hkXVoIEfp7irAG0ceadLkgVU/p7vAu+jr38OGNRsP1Vj1Nqqgk2IotMfaQ== mdt@emdete.de
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDOQ1v668B9ceIynQyR0JTEi2Z5rKZXXOmd4el0cWxTZdTK8X6FU8fEH3dFGJoYgDuLdx0QoGoRpHCyBwN8vBNZJ6X6U//Zsi6veDRALhNtewqedr2eHAakOS61LBtyF/dbqJ7nnfctNR07E5NyJ5+hEo0FaJFPHNZF1X2qIuER+cI8QZTtpJ0X8ZGpC3t4mz/ka4+mu+rz3y98kF//rpvH0yQauFA3Itr8Hi8S1SiPvjApODw8cv2H3P4IRyNy090TSSorx1l+xfSz0hVpN6OMwAI9uV4+6Rp4qPj4b9aiWee3QWrI5XjPTWxxEBy8N6Ta8WlsnxAjHA2ybe92YFv0nr1YWPMqxFaiuSPTNPBEpSx17jmwVjAYi6qzH1Ep/XtbJPGZ81rvOybJdZm9pGOmV6SxKdmufGcXMEH15kz1nQ0hsS9G4SkPZxd/jaXATJwBxf+yfqGcy8jpnsoTTo1tGLNDxGFhQadkNSSvp3kEMzMuuiHNsaIqLnJMQnc+THU= root@virtualizer
