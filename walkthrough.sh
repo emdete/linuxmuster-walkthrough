@@ -191,7 +191,7 @@ ssh-keygen -f "/root/.ssh/known_hosts" -R "10.0.0.1" || true
 # Fazit: TODO: Ersetzen durch virt-install
 # qemu-img greift auf einen anderen Pfad zu, der nicht exisitert. Es reicht, das erwartete Verzeichnis zu erzeugen:
 # BUG in qemu-img: mkdir /sys/fs/cgroup/unified/machine in /etc/rc.local
-___comment_and_ask Erzeugen der Firewall Opnsense
+___comment_and_ask "Erzeugen der Firewall Opnsense"
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-opnsense-${RELEASE}.ova
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-opnsense-${RELEASE}.ova.sha
 shasum -c lmn7-opnsense-${RELEASE}.ova.sha
@@ -256,7 +256,7 @@ virsh start lmn7-opnsense
 sleep 1
 ./opnsense.expect
 sshpass -p'Muster!' -v ssh-copy-id -o StrictHostKeyChecking=no 10.0.0.254
-___comment_and_ask Erzeugen des Linuxmuster-Server
+___comment_and_ask "Erzeugen des Linuxmuster-Server"
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-server-${RELEASE}.ova
 wget -Nc https://download.linuxmuster.net/ova/v7/latest/lmn7-server-${RELEASE}.ova.sha
 shasum -c lmn7-server-${RELEASE}.ova.sha
@@ -325,6 +325,7 @@ virsh start lmn7-server
 sleep 1
 ./server.expect "$LDAP_PLANET" "$LDAP_COUNTRY" "$LDAP_STATE" "$LDAP_LOCATION" "$LDAP_SCHOOLNAME" "$LDAP_DOMAIN"
 sshpass -p'Muster!' -v ssh-copy-id -o StrictHostKeyChecking=no 10.0.0.1
+___comment_and_ask "Server polieren."
 ssh 10.0.0.1 "cat > ~/.vimrc" <<EOF
 set mouse=
 set nocompatible
@@ -363,17 +364,23 @@ ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/hosts" << EO
 #HOSTIP #HOSTNAME.$LDAP_DOMAIN.lan #HOSTNAME.local #HOSTNAME
 #SERVERIP server.$LDAP_DOMAIN.lan server server.local server.local
 EOF
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/cron.d"
 ssh 10.0.0.1 "echo > /srv/linbo/linuxmuster-client/bionic/common/etc/cron.d/linuxmuster-client"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys < .ssh/id_rsa.pub"
 ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/authorized_keys
 ssh 10.0.0.1 "cat >> /srv/linbo/linuxmuster-client/bionic/common/root/.ssh/authorized_keys" < .ssh/id_rsa.pub
-ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/profile.d"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/profile.d/linuxmuster-proxy.sh" <<EOF
 export no_proxy=127.0.0.0/8,10.0.0.0/8,192.168.0.0/16,172.16.0.0/12,localhost,.local,.$LDAP_DOMAIN.lan
 export http_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 export ftp_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 export https_proxy=http://firewall.$LDAP_DOMAIN.lan:3128
 EOF
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/apt/apt.conf.d"
+ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/apt/apt.conf.d/90proxy" <<EOF
+Acquire::http::proxy "http://global-admin:Muster!@firewall.fsmw.lan:3128/";
+EOF
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
 AcceptEnv LANG LC_*
 ChallengeResponseAuthentication no
@@ -384,6 +391,7 @@ PrintMotd no
 UsePAM yes
 X11Forwarding no
 EOF
+ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/systemd"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/systemd/timesyncd.conf" <<EOF
 [Time]
 NTP=10.0.0.254
@@ -396,7 +404,7 @@ ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
 ssh 10.0.0.1 "sed -i 's/^KernelOptions *=.*/KernelOptions = dhcpretry=9 quiet splash modprobe.blacklist=radeon nomodeset i915.alpha_support=1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "linuxmuster-import-devices"
 if [ -f sophomorix-dump.tgz ] ; then
-	___comment_and_ask Migration
+	___comment_and_ask "Migration"
 	scp sophomorix-dump.tgz 10.0.0.1:
 	ssh 10.0.0.1 tar xvf sophomorix-dump.tgz
 	ssh 10.0.0.1 apt install -y sophomorix-vampire
@@ -440,24 +448,20 @@ else
 	echo tar cvzf sophomorix-dump.tgz sophomorix-dump
 	echo und das entstandene tgz-Archiv auf den Server kopieren, wo dieses Script läuft
 fi
+___comment_and_ask "Client aufsetzen."
 N=n
-while [ "$N" = 'n' ] ; do
-	echo -n "Client einschalten und über das Netz booten lassen. Erscheint LINBO? (Y/n) "
-	read N
-done
+echo -n "Client einschalten und über das Netz booten lassen! "
+read N
+while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 2222"; do sleep 1; done
 for N in partition format label initcache:rsync sync:1 start:1 ; do
 	echo "--- $N"
 	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
-done
-N=n
-while [ "$N" = 'n' ] ; do
-	echo -n "Client booted, erscheint der Login-Screen? (Y/n) "
-	read N
 done
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 22"; do sleep 1; done
 SERVER_TIME=$(ssh 10.0.0.1 "TZ=UTC date -Im")
 ssh 10.0.0.1 "ssh 10.0.0.99 TZ=UTC date -s $SERVER_TIME"
 ssh 10.0.0.1 "ssh 10.0.0.99 rm /etc/krb5.keytab"
+ssh 10.0.0.1 "ssh 10.0.0.99 apt install expect"
 cat kinit.expect | ssh 10.0.0.1 "ssh 10.0.0.99 cat \> /usr/local/bin/kinit"
 ssh 10.0.0.1 "ssh 10.0.0.99 chmod 0755 /usr/local/bin/kinit"
 # see https://github.com/linuxmuster/linuxmuster-client-adsso/wiki
@@ -469,5 +473,5 @@ for N in create_cloop create_rsync upload_cloop upload_rsync sync:1 ; do
 	ssh 10.0.0.1 "rsync -e linbo-ssh --port=2222 /etc/rsyncd.secrets 10.0.0.99:/tmp"
 	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N:1"
 done
-___comment_and_ask Installation beended.
+___comment_and_ask "Installation beended."
 exit 0
