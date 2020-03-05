@@ -387,7 +387,6 @@ EOF
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/systemd/timesyncd.conf" <<EOF
 [Time]
 NTP=10.0.0.254
-
 EOF
 if [ -f lmn-bionic.cloop.postsync ] ; then
 	scp lmn-bionic.cloop.postsync 10.0.0.1:/srv/linbo/
