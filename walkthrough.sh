@@ -453,13 +453,14 @@ N=n
 echo -n "Client einschalten und über das Netz booten lassen! "
 read N
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 2222"; do sleep 1; done
-for N in partition format label initcache:rsync sync:1 start:1 ; do
+for N in partition format label initcache:rsync sync:1 ; do
 	echo "--- $N"
-	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
+	ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
 done
+echo|ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper start:1" || true
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 22"; do sleep 1; done
 SERVER_TIME=$(ssh 10.0.0.1 "TZ=UTC date -Im")
-ssh 10.0.0.1 "ssh 10.0.0.99 TZ=UTC date -s $SERVER_TIME"
+ssh 10.0.0.1 "ssh -o StrictHostKeyChecking=no 10.0.0.99 TZ=UTC date -s $SERVER_TIME"
 ssh 10.0.0.1 "ssh 10.0.0.99 rm /etc/krb5.keytab"
 ssh 10.0.0.1 "ssh 10.0.0.99 apt install expect"
 cat kinit.expect | ssh 10.0.0.1 "ssh 10.0.0.99 cat \> /usr/local/bin/kinit"
@@ -469,9 +470,10 @@ ssh 10.0.0.1 "ssh 10.0.0.99 linuxmuster-client-adsso-setup"
 ssh 10.0.0.1 "ssh 10.0.0.99 rm -f /usr/local/bin/kinit"
 ssh 10.0.0.1 "ssh 10.0.0.99 reboot"
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 2222"; do sleep 1; done
-for N in create_cloop create_rsync upload_cloop upload_rsync sync:1 ; do
+for N in create_cloop:1 create_rsync:1 upload_cloop:1 upload_rsync:1 sync:1 ; do
 	ssh 10.0.0.1 "rsync -e linbo-ssh --port=2222 /etc/rsyncd.secrets 10.0.0.99:/tmp"
-	ssh 10.0.0.1 "/usr/sbin/linbo-ssh -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N:1"
+	ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
 done
+echo|ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper start:1" || true
 ___comment_and_ask "Installation beended."
 exit 0

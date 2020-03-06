@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+spawn /usr/bin/kinit global-admin
+stty echo
+set timeout -1
+expect ": "
+send "Muster!\r"
+sleep 1
+close
+exit
