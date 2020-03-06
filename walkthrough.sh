@@ -450,14 +450,13 @@ else
 fi
 ___comment_and_ask "Client aufsetzen."
 N=n
-echo -n "Client einschalten und über das Netz booten lassen! "
-read N
+ssh 10.0.0.1 "wakeonlan $CLIENT_MAC"
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 2222 > /dev/null"; do sleep 1; done
 for N in partition format label initcache:rsync sync:1 ; do
 	echo "--- LINBO I: $N"
 	ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
 done
-ssh -o BatchMode=yes 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper start:1" &
+ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper start:1" &
 while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 22 > /dev/null"; do sleep 1; done
 echo "--- Einrichten des Clients"
 SERVER_TIME=$(ssh 10.0.0.1 "TZ=UTC date -Im")
