@@ -11,19 +11,19 @@
 # minimalen Debian-System mit 30GB fuer das rootfs laufen).
 #
 # Das installierte System basiert auf libvirt und Freunde (qemu, virtinst,
-# kvm), dass in der Linuxmuster-Dokumentation "KVM" genannt wird.
+# kvm), das in der Linuxmuster-Dokumentation "KVM" genannt wird.
 #
 # Das Script loescht Artefakte von vorhergehenden Versuchen. Es sollte nicht
 # auf Systemen laufen, die bereits irgendwelche relevanten Daten, Konfigurationen
 # oder VMs enthalten.
 #
 # Das Script installiert ein Image für die Clients. Wenn auf dem Host eine
-# Datei lmn-bionic-<CLOOP_VERSION>.zip gefunden wird, wird diese auf den LM-Server kopiert
-# und installiert. Andernfalls installiert das Script per Befehl
-# `linuxmuster-client download -c bionic` auf dem Server das Image direkt (was
-# zur Zeit noch nicht funktioniert). Desweiteren importiert das Script ein dump
-# aus einer alten Installation, wenn eine Datei "sophomorix-dump.tgz" vorhanden
-# ist.
+# Datei lmn-bionic-<CLOOP_VERSION>.zip gefunden wird, wird diese auf den
+# LM-Server kopiert und installiert. Andernfalls installiert das Script per
+# Befehl `linuxmuster-client download -c bionic` auf dem Server das Image
+# direkt (was zur Zeit noch nicht funktioniert). Desweiteren importiert das
+# Script ein dump aus einer alten Installation, wenn eine Datei
+# "sophomorix-dump.tgz" vorhanden ist.
 #
 # Die Version, die von LM heruntergeladen wird:
 RELEASE=20190724
@@ -44,6 +44,7 @@ LDAP_STATE=NI
 LDAP_LOCATION=Wald
 LDAP_SCHOOLNAME=Hasenschule
 LDAP_DOMAIN=lampe
+# Client Konfiguration, eine Beispielinstallation für einen Client wird vorgenommen
 CLIENT_MAC=00:00:00:00:00:00
 CLOOP_VERSION=0320
 # Obige Einstellungen koennen in walkthrough.rc ueberschrieben werden:
@@ -65,8 +66,10 @@ ___comment_and_ask() {
 		echo
 	fi
 }
+# Diese Pakete sind auf dem virtualisierungsserver nötig:
 HOSTPACKAGES="virt-manager libvirt-clients virtinst lvm2 qemu-kvm libvirt-daemon-system expect xmlstarlet bridge-utils sshpass"
 # bridge-utils sind deprecated (`ip` kann dasselbe) aber ifupdown benoetigt die tools, wenn man darueber bridges konfiguriert
+# Dies Script kann nur als 'root' laufen
 if [ $(id -u) -ne 0 ] ; then
 	echo "--- Bitte als 'root' laufen lassen"
 	exit 3
@@ -174,7 +177,8 @@ if [ "$(virsh net-list | awk '$1 == "default"{print $2}')" != "yes" ] ; then
 	virsh net-autostart default
 fi
 ___comment_and_ask "Loeschen alter Installationsreste (alle VMs, bekannte LVs)"
-for dom in $(virsh list --all|awk '!/^( Id|---|$)/{print $2}') ; do
+#for dom in $(virsh list --all|awk '!/^( Id|---|$)/{print $2}') ; do # Löschen aller virtueller Maschinen
+for dom in lmn7-opnsense lmn7-server; do # Löschen aller virtueller Maschinen, die dies Script anlegt
 	virsh destroy $dom || true
 	virsh undefine $dom
 done
@@ -326,6 +330,9 @@ sleep 1
 ./server.expect "$LDAP_PLANET" "$LDAP_COUNTRY" "$LDAP_STATE" "$LDAP_LOCATION" "$LDAP_SCHOOLNAME" "$LDAP_DOMAIN"
 sshpass -p'Muster!' -v ssh-copy-id -o StrictHostKeyChecking=no 10.0.0.1
 ___comment_and_ask "Server polieren."
+ssh 10.0.0.1 "sed -i 's/location =.*/location = $LDAP_LOCATION/' /var/lib/linuxmuster/setup.ini"
+ssh 10.0.0.1 "sed -i 's/state =.*/state = $LDAP_STATE/' /var/lib/linuxmuster/setup.ini"
+# TODO disable motd & motd-like profile
 ssh 10.0.0.1 "cat > ~/.vimrc" <<EOF
 set mouse=
 set nocompatible
@@ -333,13 +340,16 @@ set nowarn
 set nobackup
 set nojoinspaces
 set hlsearch
+set nu
 EOF
 ssh 10.0.0.1 "cat > ~/.bashrc" <<EOF
+unset LS_COLORS
 unalias -a
 alias l=ls\ -l
 alias ll=ls\ -la
 . /etc/bash_completion
 EOF
+___comment_and_ask "Client Installation beginnen."
 if [ -f lmn-bionic-$CLOOP_VERSION.zip ] ; then
 	scp lmn-bionic-$CLOOP_VERSION.zip 10.0.0.1:
 	ssh 10.0.0.1 "unzip -o lmn-bionic-$CLOOP_VERSION.zip"
@@ -379,6 +389,7 @@ EOF
 ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/apt/apt.conf.d"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/apt/apt.conf.d/90proxy" <<EOF
 Acquire::http::proxy "http://global-admin:Muster!@firewall.fsmw.lan:3128/";
+Acquire::https::proxy "http://global-admin:Muster!@firewall.fsmw.lan:3128/";
 EOF
 ssh 10.0.0.1 "mkdir -p /srv/linbo/linuxmuster-client/bionic/common/etc/ssh"
 ssh 10.0.0.1 "cat > /srv/linbo/linuxmuster-client/bionic/common/etc/ssh/sshd_config" <<EOF
@@ -403,6 +414,7 @@ fi
 ssh 10.0.0.1 "/etc/init.d/linbo-bittorrent restart lmn-bionic.cloop force"
 ssh 10.0.0.1 "sed -i 's/^KernelOptions *=.*/KernelOptions = dhcpretry=9 quiet splash modprobe.blacklist=radeon nomodeset i915.alpha_support=1/' /srv/linbo/start.conf.bionic"
 ssh 10.0.0.1 "linuxmuster-import-devices"
+# Pruefen ob Daten zur Migration vorliegen
 if [ -f sophomorix-dump.tgz ] ; then
 	___comment_and_ask "Migration"
 	scp sophomorix-dump.tgz 10.0.0.1:
@@ -426,8 +438,8 @@ if [ -f sophomorix-dump.tgz ] ; then
 	ssh 10.0.0.1 /root/sophomorix-vampire/sophomorix-vampire-projects.sh
 	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --restore-config-files
 	ssh 10.0.0.1 sophomorix-vampire --datadir /root/sophomorix-dump --restore-config-files
-	ssh 10.0.0.1 sed -i 's/ENCODING=auto/ENCODING=UTF-8/' /etc/linuxmuster/sophomorix/default-school/school.conf
-	ssh 10.0.0.1 sed -i 's/ENCODING_FORCE=no/ENCODING_FORCE=True/' /etc/linuxmuster/sophomorix/default-school/school.conf
+	ssh 10.0.0.1 sed -i 's/ENCODING=.*/ENCODING=UTF-8/' /etc/linuxmuster/sophomorix/default-school/school.conf
+	ssh 10.0.0.1 sed -i 's/ENCODING_FORCE=.*/ENCODING_FORCE=True/' /etc/linuxmuster/sophomorix/default-school/school.conf
 	ssh 10.0.0.1 sophomorix-check
 	ssh 10.0.0.1 sophomorix-add -i
 	ssh 10.0.0.1 sophomorix-update
@@ -475,5 +487,19 @@ for N in create_cloop:1 create_rsync:1 upload_cloop:1 upload_rsync:1 sync:1 ; do
 	ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper $N"
 done
 ssh 10.0.0.1 "ssh -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=no 10.0.0.99 /usr/bin/linbo_wrapper start:1" &
+while ! ssh 10.0.0.1 "echo -n | nc -q 1 10.0.0.99 22 > /dev/null"; do sleep 1; done
+for user in linuxadmin linuxuser; do
+	ssh 10.0.0.1 ssh 10.0.0.99 sed -i \
+			's/"browser.startup.homepage", "[^"]*/"browser.startup.homepage", "server.$LDAP_DOMAIN.lan/' \
+			/home/$user/.mozilla/firefox/*.default/prefs.js
+	ssh 10.0.0.1 ssh 10.0.0.99 sed -i \
+			's/"network.proxy.no_proxies_on", "[^"]*/"network.proxy.no_proxies_on", "10.0.0.1, .$LDAP_DOMAIN.lan, server, firewall"' \
+			/home/$user/.mozilla/firefox/*.default/prefs.js \
+done
+ssh 10.0.0.1 ssh 10.0.0.99 apt update
+for p in greenfoot openjdk-8-jre\* openjdk-11-jre\* libxt-dev libxdmcp-dev libxcb1-dev libxau-dev libx11-dev libsm-dev libpthread-stubs0-dev libgcc-5-dev libgcc-7-dev libc-dev-bin libice-dev libltdl-dev mc account-plugin-\* aspell aspell-en baobab binutils binutils-common binutils-x86-64-linux-gnu snapd flatpak gnome-software-plugin-flatpak libostree-1-1 xdg-desktop-portal xdg-desktop-portal-gtk snapd-login-service; do
+	ssh 10.0.0.1 ssh 10.0.0.99 "apt purge $p"
+done
+ssh 10.0.0.1 ssh 10.0.0.99 apt autoremove --purge
 ___comment_and_ask "Installation beended."
 exit 0

@@ -36,7 +36,7 @@ Das Script könnte als "Repeatable Build" für verlässliche Testläufe dienen.
 
 Im LM-Forum gibts eine
 [Diskussion](https://ask.linuxmuster.net/t/lm-v7-walkthrough/4552/92) über das
-Script und die Unwegbarkeiten in der Installation.
+Script und die Unwägbarkeiten in der Installation.
 
 ## Ein paar Worte über Verlässlichkeit, Wiederholbarkeit und Korrektheit
 
@@ -66,5 +66,5 @@ kaum testen.
 
 Ein Problem für die Automatisierung ist zusätzlich die fehlenden Fehlerabfragen
 in den vielen Scripten, die Linuxmuster ausmachen. Für das walkthrough ist dann
-nicht mehr erkennbar, ob ein Ablauf erfolgreich war.
+nicht mehr erkennbar, ob ein Ablauf überhaupt erfolgreich war.
 
